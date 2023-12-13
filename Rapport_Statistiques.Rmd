@@ -1,0 +1,839 @@
+---
+title: "Projet Statistiques"
+author: "GOURDON Stéphanie et AVANZINO Aurélien"
+date: "07/05/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r vgsales}
+vgsales <- read.csv("vgsales.csv",header = TRUE, sep = ",",fill=TRUE)
+
+vgsales$Year[which(vgsales$Year == "N/A")]<- NA
+vgsales$Year[which(vgsales$Publisher == "N/A")]<- NA
+
+base_complete <- na.omit(vgsales)
+
+base <- base_complete[,c(3,5,8,11)]
+```
+
+## I. Introduction - Présentation du jeu de données "vgsales.csv"
+
+### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a. Description du jeu de données
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;La base de données "vgsales" contient une liste de jeux vidéos dont les ventes sont supérieures à 100 000 exemplaires en 2016. Cet ensemble de données a été généré par un extrait de <https://www.vgchartz.com>. 
+Elle est constituée de 16 598 individus différents, et de 11 variables. Nous verrons par la suite si nous conserverons la totalité des individus, ou si nous utiliserons seulement un échantillon de la base pour l'analyse, en fonction des variables choisies.
+
+### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;b. Description des variables
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Comme dit précédemment, notre jeu de données "vgsales" est composé de 11 variables différentes: 
+    
+| Nom de la variable | Description de la variable |
+|:--------|:--------|
+|    Rank    |    Classement des ventes globales    |
+|    Name    |    Nom du jeu    |
+|    Platform    |    Plateforme de la version des jeux (WII, PC, PS4, ...)    |
+|    Year    |    Année de sortie du jeu    |
+|    Genre    |    Genre du jeu    |
+|    Publisher    |    Éditeur du jeu    |
+|    NA_Sales    |    Ventes en Amérique du Nord (en millions d'Euros)    |
+|    EU_Sales    |    Ventes en Europe (en millions d'Euros)    |
+|    JP_Sales    |    Ventes au Japon (en millions d'Euros)    |
+|    Other_Sales    |    Ventes dans le reste du monde (en millions d'Euros)    |
+|    Global_Sales    |    Ventes mondiales totales (en millions d'Euros)    |
+
+
+| Variables Qualitatives |   | Variables Quantitatives |    |
+|:--------|:--------|:--------|:--------|
+|    **Nominales**    |    **Ordinales**    |    **Continues**    |    **Discrètes**    |
+|    Name    |        |     NA_Sales    |    Year    |
+|    Platform    |        |    EU_Sales    |    Rank    |
+|    Genre    |        |    JP_Sales    |        |
+|    Publisher    |        |    Other_Sales    |        |
+|        |        |    Global_Sales    |        |
+
+### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;c. Valeurs manquantes
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;On peut remarquer que cette base de données n'est pas totalement complète, nous pouvons voir qu'il y a parfois la valeur "N/A". En effet, nous la retrouvons 271 fois dans la colonne Year (c'est le cas par exemple pour l'individu 180), et 58 fois dans la colonne Publisher (c'est le cas par exemple pour l'individu 1664). Quelques individus ont comme données manquantes l'année, mais aussi l'éditeur, c'est le cas pour l'individu 471. Au total, cela fait 329 données manquantes correspondant à 307 individus. 
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Pour réaliser notre analyse, nous ne prendrons pas en compte ces individus.
+
+### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;d. Choix des variables étudiées
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Nous avons choisi d'étudier 4 variables parmi les 11 de la base de données:
+
+- 2 variables qualitatives nominales:
+  - Platform,
+  - Genre
+- 2 variables quantitatives continues:
+  - EU_Sales,
+  - Global_Sales
+
+Il existe 12 modalités possibles pour la variable Genre:
+```{r}
+unique(base$Genre)
+```
+
+Il existe 31 modalités possibles pour la variable Platform:
+```{r}
+unique(base$Platform)
+```
+
+Concernant la variable EU_Sales, les valeurs sont comprises entre 
+```{r}
+min(base$EU_Sales)
+```
+et 
+```{r}
+max(base$EU_Sales)
+```
+
+Quant à la variable Global_Sales, les valeurs sont comprises entre 
+```{r}
+min(base$Global_Sales)
+```
+et 
+```{r}
+max(base$Global_Sales)
+```
+
+### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;e. Définition de l'échantillon
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Nous avons finalement choisi de nous concentrer sur un échantillon du jeu de données. Afin de le sélectionner au mieux, nous avons défini 2 critères à partir de différentes variables: 
+
+- Le premier est que la vente globale d'un jeu-vidéo doit être strictement supérieure à 400 000 euros (0.4 millions d'euros), nous avons choisi ce montant minimum car nous voulons étudier les ventes réalisées, ce qui serait illogique avec un montant nul ou peu élevé. Cela nous permet de réduire le jeu de données à 4707 individus.
+- Et le second est de conserver les plateformes pour lesquelles le nombre de jeux vidéo est supérieur à 95, soit les plateformes les plus populaires.
+
+Voici un aperçu des plateformes avec le nombre de jeux associés prenant déjà en compte notre premier critère sur la vente globale:
+
+```{r}
+bases_ech <- base[which(base$Global_Sales > 0.4),]
+table(bases_ech$Platform)
+```
+
+Nous allons donc conserver les plateformes suivantes afin de respecter notre second critère:
+
+- 3DS,
+- DS,
+- GBA,
+- GC, 
+- N64,
+- PC,
+- PS,
+- PS2,
+- PS3,
+- PS4,
+- PSP,
+- Wii,
+- X360,
+- XB.
+
+```{r}
+bases <- base[which(base$Global_Sales > 0.4 & base$Platform != 'SCD' & base$Platform != 'WS' & base$Platform != 'DC' & base$Platform != 'SAT' & base$Platform != 'GEN' & base$Platform != 'PSV' & base$Platform != 'WiiU' & base$Platform != 'GB' & base$Platform != '2600' & base$Platform != 'XOne' & base$Platform != 'NES' & base$Platform != 'SNES'),]
+```
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Au final, nous obtenons un échantillon comportant les plateformes les plus populaires, et les jeux vidéo dont la vente globale de chacun est supérieure à 400 000 euros.
+
+### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;f. Liste de questions auxquelles on souhaite répondre
+
+- Le genre des jeux vidéo a-t-il un impact sur les ventes européennes? mondiales?
+- La plateforme des jeux vidéo a-t-il un impact sur les ventes européennes? mondiales?
+- Les ventes européennes correspondent-elles à une grande part des ventes mondiales?
+- Les jeux d'actions sont-ils plus développés sur la plateforme Nintendo ou sur la plateforme Playstation?
+- Les jeux de stratégies sont-ils plus développés sur la plateforme Nintendo ou sur la plateforme Playstation?
+
+## II. Analyse univariée
+
+### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a. Résumés numériques des variables choisies
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Commençons par un résumé détaillé de la base:
+
+```{r}
+summary(bases)
+```
+Sur ce résumé, nous remarquons que nous avons au final un échantillon de 4182 individus dans notre échantillon.
+
+Les variables EU_Sales et Global_Sales étant quantitative, nous pouvons retrouver plusieurs statistiques descriptives telles que le minimum, le maximum, etc...
+
+La variable EU_Sales est comprise entre 0 et 29.02 millions d'euros, la moyenne est de 0.46 millions d'euros, la variance est :
+
+```{r}
+var(bases$EU_Sales)
+```
+, l'écart-type est de 
+```{r}
+sd(bases$EU_Sales)
+```
+. Les valeurs de la variance et de l'écart-type sont assez faibles, ce qui signifie que les valeurs ont tendance à être concentrées autour de la moyenne, le graphe de nuage de points qui suit permet de le visualiser:
+
+```{r}
+plot(bases$EU_Sales, main = "Ventes européennes des jeux vidéo en fonction des jeux vidéo", ylab = "Ventes européenne des jeux vidéo (en millions d'euros)", xlab="Index des jeux vidéo")
+abline(h=mean(bases$EU_Sales), col = "red")
+text(4000,2,paste("Moyenne"),col="red") 
+```
+
+La variable Global_Sales est comprise entre 0.41 et 82.74 millions d'euros, la moyenne est de 1.507 millions d'euros, la variance est de 
+```{r}
+var(bases$Global_Sales)
+```
+, l'écart-type est de 
+```{r}
+sd(bases$Global_Sales)
+```
+. Les valeurs de la variance et de l'écart-type sont donc un peu plus élevées que pour l'autre variable, ce qui veut dire que les valeurs sont un peu plus dispersées, et donc moins concentrées autour de la moyenne, le graphe de nuage de points qui suit permet de le visualiser:
+
+```{r}
+plot(bases$Global_Sales, main = "Ventes globales des jeux vidéo en fonction de l'index des jeux vidéo",ylab = "Ventes globales des jeux vidéo (en millions d'euros)", xlab="Index des jeux vidéo")
+abline(h=mean(bases$Global_Sales), col = "red")
+text(4000,5,paste("Moyenne"),col="red") 
+```
+
+### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;b. Résumés graphiques des variables choisies
+
+#### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1. Étude des variables qualitatives
+
+- Variable Platform:
+
+```{r}
+platformTable <- sort(table(bases$Platform))
+platform <- as.numeric(platformTable)
+xx <- barplot(platform,main="Répartition des plateformes", col="#99FFFF", ylim=c(0,850), ylab="Nombre de jeux vidéo")
+axis(1, at=xx, labels=names(platformTable), tick=FALSE, las=2, line=-0.5, cex.axis=0.95)
+text(x=xx, y= platformTable, label=platform, pos = 3, cex = 1, col = "#006666")
+```
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ce graphique représente le nombre de jeux vidéo selon les différentes plateformes en 2016, on voit qu'il dégage des proportions inégales. 
+En effet, presque 1/5 (753) des jeux vidéo ont étés publiés sur la Playstation 2, 542 sur la Playstation 3 et 507 sur la XBox360. Contre seulement 109 jeux vidéo publiés sur la 3DS et environ 120 sur la Game Boy Cube, la Nintendo 64, la Playstation 4.
+
+- Variable Genre
+
+```{r}
+genreTable <- sort(table(bases$Genre))
+genre <- as.numeric(genreTable)
+xx <- barplot(genre,main="Répartition des genres",col="#99FFFF", ylim=c(0,1000), ylab="Nombre de jeux vidéo")
+axis(1, at=xx, labels=names(genreTable), tick=FALSE, las=2, line=-0.5, cex.axis=0.95)
+text(x=xx, y= genreTable, label=genre, pos = 3, cex = 1, col = "#006666")
+```
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ce graphique représente le nombre de jeux vidéo selon les genres de jeux vidéo en 2016, on voit qu'il dégage aussi des proportions inégales. 
+En effet, plus de 1/5 (901) des jeux vidéo sont des jeux d'action, et 695 sont des jeux de sports. Les jeux de puzzles, de stratégies ou d'aventure représente respectivement 81, 90 et 108 jeux vidéo.
+
+#### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2. Étude des variables quantitatives
+
+Nous avons pour chaque variable qualitatives 2 "boîtes à moustaches" qui permettent d'obtenir un aperçu de ces données, la première avec les données aberrantes, et la seconde qui ne prend pas en compte les données aberrantes, afin de faciliter l'analyse de la boîte.
+
+- Variable Eu_Sales:
+
+```{r}
+par(mfrow=c(1,2), oma = c(0, 0, 2, 0), mar = c(1, 5, 1, 1))
+boxplot(bases$EU_Sales, col="#99FFFF",ylab="Ventes (en millions d'euros)")
+boxplot(bases$EU_Sales, col="#99FFFF",ylab="Ventes (en millions d'euros)",outline=FALSE)
+mtext("Ventes européennes des jeux vidéo", outer = TRUE, cex = 1.5)
+```
+
+Le premier diagramme des ventes européennes des jeux vidéo montre qu'il y a plusieurs données aberrantes, et que la lecture de la boîte n'est pas très lisible, nous allons donc utiliser le deuxième diagramme. 
+Ce diagramme rend visible le fait que la médiane est d'environ 0.24 (moyenne = ), chacun des 25% des données sont inférieures à 0.01 et supérieures à 0.5, et 50% des données dans la boîte dont son intervalle interquartile est de 0.4.
+La moustache inférieure va jusqu'à 0.0, et la moustache supérieure jusqu'à 1.02.
+Les valeurs situées au dessus de la moustache supérieure (1.02) sont marquées valeurs aberrantes, car elles ne sont pas à l'intérieur de la boîte.
+Dans ce diagramme, nous remarquons qu'il y a une valeur qui a tendance à se détacher des autres avec une vente à 29 millions d'euros. 
+Cette valeur étant très éloignée des autres, nous ne la prendrons pas en compte pour la suite de l'analyse.
+
+```{r}
+bases1 <- bases[2:4182,] 
+```
+
+##### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;i. Estimateurs de moyenne et variance
+
+Un estimateur de la moyenne pour la variable EU_Sales est :
+```{r}
+mean(bases1$EU_Sales)
+```
+
+Un estimateur de la variance pour la variable EU_Sales est :
+```{r}
+var(bases1$EU_Sales)
+```
+
+##### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ii. Caractère gaussien
+
+Je vais à présent regarder si la variable EU_Sales suit une loi normale.
+
+```{r}
+
+par(mfrow=c(1,2))
+
+hist(bases1$EU_Sales, main="Histogramme de EU_Sales",xlab="Ventes européennes (en millions d'euros)",prob=T)
+points(seq(-5,3,0.2),dnorm(seq(-5,3,0.2),mean(bases1$EU_Sales),sd(bases1$EU_Sales)),col=2,type="l")
+
+qqnorm(bases1$EU_Sales)
+qqline(bases1$EU_Sales, col=2)
+
+shapiro.test(bases1$EU_Sales)
+```
+Lorsque l'on regarde l'histogramme de la répartition des ventes européennes EU_Sales, on voit que ça ne correspond pas à une répartition suivant une loi normale, il en est de même avec le deuxième graphique, les valeurs ne se trouvent pas autour de la droite. Pour confirmer cela, nous avons donc réalisé un test de Shapiro, la p-value est strictement inférieure à 0.05, donc on rejette l'hypothèse que la variable suit une loi gaussienne, et on accepte celle que la répartition ne suit pas une loi normale.
+
+Nous allons donc essayer avec log(EU_Sales). Lorsque nous réalisons la fonction log sur la variable EU_Sales, nous obtenons des valeurs infinies, nous les avons donc enlever, et avons continuer l'analyse sans elles.
+
+```{r}
+par(mfrow=c(1,2))
+
+logEU <- log(bases1$EU_Sales)
+logEU[which(logEU == "-Inf")]<- NA
+baselog <- na.omit(logEU)
+
+hist(baselog, main="Histogramme de log(EU_Sales)",xlab="Ventes européennes (en millions d'euros)",prob=T)
+points(seq(-5,3,0.2),dnorm(seq(-5,3,0.2),mean(baselog),sd(baselog)),col=2,type="l")
+
+qqnorm(baselog, ylim = c(-5,3))
+qqline(baselog, col=2)
+
+shapiro.test(baselog)
+```
+Avec le log, nous remarquons que l'histogramme de la répartition des ventes européennes EU_Sales aurait tendance à suivre une loi normale. Cependant, dès le deuxième graphe, nous pouvons voir que les points situés aux extrémités de la droite sont éloignées de celle-ci. Nous avons donc réalisé un test de shapiro, la p-value est strictement inférieure à 0.05, donc on rejette l'hypothèse que la variable suit une loi gaussienne, et on accepte celle que la répartition ne suit pas une loi normale.
+
+##### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsps;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;iii. Intervalles de confiance des moyennes
+
+Pour le calcul de l'intervalle de confiance des moyennes, nous garderons les valeurs sans application du log.
+
+Au risque de 5%, l'intervalle de confiance pour la moyenne est de:
+
+```{r}
+interval=t.test(bases1$EU_Sales, conf.level = 0.95)
+interval$conf.int
+```
+
+- Variable Global_Sales:
+
+```{r}
+par(mfrow=c(1,2), oma = c(0, 0, 2, 0), mar = c(1, 5, 1, 1))
+boxplot(bases$Global_Sales, col="#99FFFF",ylab="Ventes (en millions d'euros)")
+boxplot(bases$Global_Sales, col="#99FFFF",ylab="Ventes (en millions d'euros)",outline=FALSE)
+mtext("Ventes globales des jeux vidéo", outer = TRUE, cex = 1.5)
+```
+
+Le premier diagramme des ventes globales des jeux vidéo montre qu'il y a plusieurs données aberrantes, et que la lecture de la boîte n'est pas très lisible, nous allons donc utiliser le deuxième diagramme. 
+Ce diagramme rend visible le fait que la médiane est d'environ 0.8 (moyenne = ), chacun des 25% des données sont inférieures à 0.55 et supérieures à 1.5, et 50% des données dans la boîte dont son intervalle interquartile est de 0.95.
+La moustache inférieure va jusqu'à 0.4, et la moustache supérieure jusqu'à 3.0.
+Les valeurs situées au dessus de la moustache supérieure (3.0) sont marquées valeurs aberrantes, car elles ne sont pas à l'intérieur de la boîte. Ces valeurs aberrantes sont visibles sur le premier diagramme.
+Dans ce diagramme, nous remarquons qu'il y a une valeur qui a tendance à se détacher des autres avec une vente à 82 millions d'euros.
+Cette valeur étant très éloignée des autres, nous ne la prendrons pas en compte pour la suite de l'analyse.
+
+```{r}
+bases1 <- bases[2:4182,] 
+```
+
+##### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;i. Estimateurs de moyenne et variance
+
+Un estimateur de la moyenne pour la variable Global_Sales est :
+```{r}
+mean(bases1$Global_Sales)
+```
+
+Un estimateur de la variance pour la variable Global_Sales est :
+```{r}
+var(bases1$Global_Sales)
+```
+
+##### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ii. Caractère gaussien
+
+Je vais à présent regarder si la variable Global_Sales suit une loi normale.
+```{r}
+par(mfrow=c(1,2))
+
+hist(bases1$Global_Sales , main="Histogramme de Global_Sales",xlab="Ventes globales (en millions d'euros)",prob=T)
+points(seq(0,35,0.2),dnorm(seq(0,35,0.2),mean(bases1$Global_Sales),sd(bases1$Global_Sales)),col=2,type="l")
+
+qqnorm(bases1$Global_Sales)
+qqline(bases1$Global_Sales, col=2)
+
+shapiro.test(bases1$Global_Sales)
+```
+
+Lorsque l'on regarde l'histogramme de la répartition des ventes globales Global_Sales, on voit que ça ne correspond pas à une répartition suivant une loi normale, il en est de même pour le deuxième graphe, les valeurs ne suivent pas la droite. Pour confirmer cela, nous avons donc réalisé un test de Shapiro, la p-value est strictement inférieure à 0.05, donc on rejette l'hypothèse que la variable suit une loi gaussienne, et on accepte celle que la répartition ne suit pas une loi normale.
+
+Nous allons donc essayer avec log(EU_Sales).
+```{r}
+par(mfrow=c(1,2))
+
+hist(log(bases1$Global_Sales), main="Histogramme de log(Global_Sales)",xlab="Ventes globales (en millions d'euros)",prob=T)
+points(seq(-1,4,0.2),dnorm(seq(-1,4,0.2),mean(log(bases1$Global_Sales)),sd(log(bases1$Global_Sales))),col=2,type="l")
+
+qqnorm(log(bases1$Global_Sales), ylim = c(-2,4))
+qqline(log(bases1$Global_Sales), col=2)
+
+shapiro.test(log(bases1$Global_Sales))
+```
+
+Avec le log, nous obtenons des résultats assez similaire qu'auparavant avec un pic entre -1 et 0, même avec le shapiro-test, où la p-value est strictement inférieure à 0.05, donc on accepte l'hypothèse qui dit que la répartition ne suit pas une loi normale.
+
+##### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;iii. Intervalles de confiance des moyennes
+
+Pour le calcul de l'intervalle de confiance des moyennes, nous garderons les valeurs sans application du log.
+
+Au risque de 5%, l'intervalle de confiance pour la moyenne est de : 
+
+```{r}
+interval=t.test(bases1$Global_Sales, conf.level = 0.95)
+interval$conf.int
+```
+
+### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3. Intervalle de confiance d'une proportion pertinente
+
+Au risque de 5%, l’intervalle de confiance sur la proportion des ventes globales de jeux vidéo où le genre est "Sports" est de :
+
+```{r}
+intervalProp = prop.test(length(which(bases1$Genre=="Sports")),length(bases1$Global_Sales))
+intervalProp$conf.int
+```
+
+Au risque de 5%, l’intervalle de confiance sur la proportion des ventes globales de jeux vidéo où le genre est "Simulation" est de :
+
+```{r}
+intervalProp = prop.test(length(which(bases1$Genre=="Simulation")),length(bases1$Global_Sales))
+intervalProp$conf.int
+```
+
+Lorsque l'on regarde ces résultats d'intervalles, on peut voir qu'à partir de cet échantillon, la proportion des ventes globales des jeux vidéo dont le genre est le sport est comprise entre 0.155 et 0.178, et la proportion des ventes globales des jeux vidéo dont le genre est la simulation est comprise entre 0.046 et 0.060 au seuil de confiance de 95%.
+Cela signifie donc que les jeux vidéo de sports ont une part plus importante dans le montant des ventes globales que les jeux vidéo de simulation.
+
+Pour la suite de l'analyse, nous conserverons les variables avec application du log.
+
+```{r}
+nintendo <- bases1[which(bases1$Platform=="3DS" | bases1$Platform=="DS" | bases1$Platform=="GBA" | bases1$Platform=="GC" | bases1$Platform=="N64" | bases1$Platform=="Wii"),]
+pc <- bases1[which(bases1$Platform=="PC"),]
+playstation <- bases1[which(bases1$Platform=="PS" | bases1$Platform=="PS2" | bases1$Platform=="PS3" | bases1$Platform=="PS4" | bases1$Platform=="PSP"),]
+xbox <- bases1[which(bases1$Platform=="X360" | bases1$Platform=="XB"),]
+
+bases1$Global_Sales <- log(bases1$Global_Sales)
+bases1$EU_Sales <- log(bases1$EU_Sales)
+bases1$EU_Sales[which(bases1$EU_Sales == "-Inf")]<- NA
+bases1 <- na.omit(bases1)
+```
+
+## III. Analyse multivariée
+
+Comme nous avons beaucoup de modalités que ce soit pour la variable Platform, ou pour la variable Genre, nous avons donc choisi de regrouper certaines modalités:
+
+- Pour la variable Platform:
+  - Nintendo: 3DS, DS, GBA, GC, N64, Wii
+  - PC: PC
+  - Playstation: PS, PS2, PS3, PS4, PSP
+  - Xbox: X360, XB
+- Pour la variable Genre:
+  - Action : Action, Adventure, Fighting, Racing, Shooter, Sports
+  - Stategy : Platform, Puzzle, Role-playing, Simulation, Strategy
+  - Misc
+
+```{r}
+bases1$Platform[which(bases1$Platform=="3DS" | bases1$Platform=="DS" | bases1$Platform=="GBA" | bases1$Platform=="GC" | bases1$Platform=="N64" | bases1$Platform=="Wii")] <- "Nintendo"
+
+bases1$Platform[which(bases1$Platform=="PS" | bases1$Platform=="PS2" | bases1$Platform=="PS3" | bases1$Platform=="PS4" | bases1$Platform=="PSP")] <- "Playstation"
+
+bases1$Platform[which(bases1$Platform=="X360" | bases1$Platform=="XB")] <- "Xbox"
+
+bases1$Genre[which(bases1$Genre=="Action" | bases1$Genre=="Adventure" | bases1$Genre=="Fighting" | bases1$Genre=="Racing" | bases1$Genre=="Shooter" | bases1$Genre=="Sports" )] <- "Action"
+
+bases1$Genre[which(bases1$Genre=="Platform" | bases1$Genre=="Puzzle" | bases1$Genre=="Role-Playing" | bases1$Genre=="Simulation" | bases1$Genre=="Strategy")] <- "Strategy"
+```
+
+### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a. Analyses quanti*quali
+
+Pour l'analyse Quanti * Quali, nous avons décidés de nous concentrer sur 2 modalités pour chaque variable qualitative, qui correspondent à celles qui qui sont le plus présentes dans le diagramme en barre Quali * Quali:
+
+- Platform : 
+  - Nintendo,
+  - Playstation. 
+- Genre : 
+  - Action,
+  - Strategy.
+  
+```{r}
+baseReduiteGenre <- bases1[which(bases1$Genre == "Action" | bases1$Genre == "Strategy"),]
+
+baseReduitePlatform <- bases1[which(bases1$Platform == "Nintendo" | bases1$Platform == "Playstation"),]
+```
+
+#### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1. Analyse des variables Genre * EU_Sales
+
+#### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;i. Jeux d'action
+
+Commençons par faire un résumé statistiques de la variable Genre lorsqu'elle vaut Action pour les ventes européennes:
+```{r}
+EUAction <- bases1[which(bases1$Genre == "Action"),c(2,3)]
+summary(EUAction)
+```
+
+Voici à présent un histogramme et un boxplot pour ces mêmes variables:
+```{r}
+par(mfrow=c(1,2), oma = c(2, 0, 2, 0), mar = c(4, 4, 1, 1))
+hist(EUAction$EU_Sales, main="", xlab="Ventes européennes (en millions d'euros)")
+boxplot(EUAction$EU_Sales, col="#99FFFF",ylab="Ventes européennes (en millions d'euros)")
+mtext("Ventes européennes des jeux d'action", outer = TRUE, cex = 1.5)
+```
+
+#### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;i. Jeux de stratégie
+Commençons par faire un résumé statistiques de la variable Genre lorsqu'elle vaut Stratégie pour les ventes européennes:
+```{r}
+EUStrategy <- bases1[which(bases1$Genre == "Strategy"),c(2,3)]
+summary(EUStrategy)
+```
+
+Voici à présent un histogramme et un boxplot pour ces mêmes variables:
+```{r}
+par(mfrow=c(1,2), oma = c(2, 0, 2, 0), mar = c(4, 4, 1, 1))
+hist(EUStrategy$EU_Sales, main="", xlab="Ventes européennes (millions d'euros)")
+boxplot(EUStrategy$EU_Sales, col="#99FFFF",ylab="Ventes européennes (en millions d'euros)")
+mtext("Ventes européennes des jeux de stratégie", outer = TRUE, cex = 1.5)
+```
+
+#### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2. Analyse des variables Genre * Global_Sales
+
+#### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;i. Jeux d'action
+
+Nous avons réalisé un summary, afin d'avoir un résumé statistique de la variable Genre qui vaut Action et des ventes globales:
+
+```{r}
+GlAction <- bases1[which(bases1$Genre == "Action"),c(2,4)]
+summary(GlAction)
+```
+
+Voici à présent un histogramme et un boxplot pour ces mêmes variables:
+```{r}
+par(mfrow=c(1,2), oma = c(2, 0, 2, 0), mar = c(4, 4, 1, 1))
+hist(GlAction$Global_Sales, main="", xlab="Ventes globales (en millions d'euros)")
+boxplot(GlAction$Global_Sales, col="#99FFFF",ylab="Ventes globales (en millions d'euros)")
+mtext("Ventes globales des jeux d'action", outer = TRUE, cex = 1.5)
+```
+
+#### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;i. Jeux de stratégie
+
+Nous avons réalisé un summary, afin d'avoir un résumé statistique de la variable Genre qui vaut Strategy et des ventes globales:
+
+```{r}
+GlStrategy <- bases1[which(bases1$Genre == "Strategy"),c(2,4)]
+summary(GlStrategy)
+```
+
+Voici à présent un histogramme et un boxplot pour ces mêmes variables:
+
+```{r}
+par(mfrow=c(1,2), oma = c(2, 0, 2, 0), mar = c(4, 4, 1, 1))
+hist(GlStrategy$Global_Sales, main="", xlab="Ventes globales (en millions d'euros)")
+boxplot(GlStrategy$Global_Sales, col="#99FFFF",ylab="Ventes globales (en millions d'euros)")
+mtext("Ventes globales des jeux de stratégie", outer = TRUE, cex = 1.5)
+```
+
+```{r}
+vartotale <- function(x,z) {
+res <- sum((x - mean(x))^2) / length(z)
+return(res)
+}
+
+varianceInter <- function(x, y, z) {
+moyennes <- tapply(x, y, mean)
+effectifs <- tapply(x, y, length)
+res <- (sum(effectifs * (moyennes - mean(x))^2)) / length(z)
+return(res)
+}
+
+corr <- function(x, y, z) {
+res <- varianceInter(x, y, z) / vartotale(x, z)
+return(res)
+}
+
+corres = corr(baseReduiteGenre$EU_Sales, baseReduiteGenre$Genre, baseReduiteGenre[,"Genre"])
+corres
+```
+Comme le rapport de corrélation entre les ventes européennes et le genre est proche de 0, alors on peut en déduire qu'il n'y a pas de lien entre les 2 variables.
+
+```{r}
+corres = corr(baseReduiteGenre$Global_Sales, baseReduiteGenre$Genre, baseReduiteGenre[,"Genre"])
+corres
+```
+Comme le rapport de corrélation entre les ventes globales et le genre est proche de 0, alors on peut en déduire qu'il n'y a pas de lien entre les 2 variables.
+
+#### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3. Analyse des variables Platform * EU_Sales
+
+#### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;i. Plateforme Nintendo
+
+Nous avons réalisé un summary, afin d'avoir un résumé statistique de la variable Platform qui vaut Nintendo et des ventes européennes:
+
+```{r}
+EUNintendo <- bases1[which(bases1$Platform == "Nintendo"),c(1,3)]
+summary(EUNintendo)
+```
+
+Voici à présent un histogramme et un boxplot pour ces mêmes variables:
+
+```{r}
+par(mfrow=c(1,2), oma = c(2, 0, 2, 0), mar = c(4, 4, 1, 1))
+hist(EUNintendo$EU_Sales, main="", xlab="Ventes européennes (en millions d'euros)")
+boxplot(EUNintendo$EU_Sales, col="#99FFFF",ylab="Ventes européennes (en millions d'euros)")
+mtext("Ventes européennes de la plateforme Nintendo", outer = TRUE, cex = 1.5)
+```
+
+#### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;i. Plateforme Playstation
+
+Nous avons réalisé un summary, afin d'avoir un résumé statistique de la variable Platform qui vaut Playstation et des ventes européennes:
+
+```{r}
+EUPlaystation <- bases1[which(bases1$Platform == "Playstation"),c(1,3)]
+summary(EUPlaystation)
+```
+
+Voici à présent un histogramme et un boxplot pour ces mêmes variables:
+
+```{r}
+par(mfrow=c(1,2), oma = c(2, 0, 2, 0), mar = c(4, 4, 1, 1))
+hist(EUPlaystation$EU_Sales, main="", xlab="Ventes européennes (en millions d'euros)")
+boxplot(EUPlaystation$EU_Sales, col="#99FFFF",ylab="Ventes européennes (en millions d'euros)")
+mtext("Ventes européennes de la plateforme Playstation", outer = TRUE, cex = 1.5)
+```
+
+#### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;4. Analyse des variables Platform * Global_Sales
+
+#### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;i. Plateforme Nintendo
+
+Nous avons réalisé un summary, afin d'avoir un résumé statistique de la variable Platform qui vaut Nintendo et des ventes mondiales:
+
+```{r}
+GlNintendo <- bases1[which(bases1$Platform == "Nintendo"),c(1,4)]
+summary(GlNintendo)
+```
+
+Voici à présent un histogramme et un boxplot pour ces mêmes variables:
+
+```{r}
+par(mfrow=c(1,2), oma = c(2, 0, 2, 0), mar = c(4, 4, 1, 1))
+hist(GlNintendo$Global_Sales, main="", xlab="Ventes globales (en millions d'euros)")
+boxplot(GlNintendo$Global_Sales, col="#99FFFF",ylab="Ventes globales (en millions d'euros)")
+mtext("Ventes globales de la plateforme Nintendo", outer = TRUE, cex = 1.5)
+```
+
+#### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ii. Plateforme Playstation
+
+Nous avons réalisé un summary, afin d'avoir un résumé statistique de la variable Platform qui vaut Nintendo et des ventes mondiales:
+
+```{r}
+GlPlaystation <- bases1[which(bases1$Platform == "Playstation"),c(1,4)]
+summary(GlPlaystation)
+```
+Voici à présent un histogramme et un boxplot pour ces mêmes variables:
+
+```{r}
+par(mfrow=c(1,2), oma = c(2, 0, 2, 0), mar = c(4, 4, 1, 1))
+hist(GlPlaystation$Global_Sales, main="", xlab="Ventes globales (en millions d'euros)")
+boxplot(GlPlaystation$Global_Sales, col="#99FFFF",ylab="Ventes globales (en millions d'euros)")
+mtext("Ventes globales de la plateforme Playstation", outer = TRUE, cex = 1.5)
+```
+
+```{r}
+corres = corr(baseReduitePlatform$EU_Sales, baseReduitePlatform$Platform, baseReduitePlatform[,"Platform"])
+corres
+```
+Comme le rapport de corrélation entre les ventes européennes et la plateforme est proche de 0, alors on peut en déduire qu'il n'y a pas de lien entre les 2 variables.
+
+```{r}
+corres = corr(baseReduitePlatform$Global_Sales, baseReduitePlatform$Platform, baseReduitePlatform[,"Platform"])
+corres
+```
+Comme le rapport de corrélation entre les ventes globales et la plateforme est proche de 0, alors on peut en déduire qu'il n'y a pas de lien entre les 2 variables.
+
+#### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;5. Test d'égalité des moyennes entre les sous-populations
+
+#### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;i. Test des moyennes sur les ventes européennes entre les genres de jeux Action et Strategy
+
+Comme nous avons un croisement quanti*quali, pour pouvoir faire le test sur la moyenne, il faut d'abord faire le test sur l'égalité des variances pour déterminer l'écriture du test. Pour cela, il faut soit que les sous-populations suivent une loi gaussienne, soit que l'échantillon soit assez grand, ce qui est notre cas ici avec 3534 individus.
+
+Pour le test des variances, on fait les hypothèses suivantes:
+  H0: les variances sont égales
+  H1: les variances ne sont pas égales.
+```{r}
+testmoyGenreEU <- baseReduiteGenre[,c(2,3)]
+var.test(EU_Sales~Genre,data = testmoyGenreEU)
+```
+LA p-value est de 0.01381, donc elle est inférieure à 0.05, et on rejette H0. Donc au risque de 5%, les variances ne sont pas égales.
+
+On peut à présent faire le test sur l'égalité des moyennes, avec les variances non égales, et l'échantillon est indépendant.
+
+Pour tester l'égalité des moyennes, on fait les hypothèses suivantes:
+µ1: moyenne des ventes européennes des jeux d'action
+µ2: moyenne des ventes européennes des jeux de stratégie
+
+H0: µ1 et µ2 sont égales
+H1: µ1 et µ2 sont différentes
+
+```{r}
+t.test(EU_Sales~Genre,var.equal=F,data = testmoyGenreEU)
+```
+
+La p-value est de 0.002592, donc elle est inférieure à 0.05, et on rejette H0. Donc au risque de 5%, les moyennes des ventes européennes des jeux d'action et de stratégie sont différentes.
+
+#### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ii. Test des moyennes sur les ventes globales entre les genres de jeux Action et Strategy
+
+Comme nous avons un croisement quanti*quali, pour pouvoir faire le test sur la moyenne, il faut d'abord faire le test sur l'égalité des variances pour déterminer l'écriture du test. Pour cela, il faut soit que les sous-populations suivent une loi gaussienne, soit que l'échantillon soit assez grand, ce qui est notre cas ici avec 3534 individus.
+
+Pour le test des variances, on fait les hypothèses suivantes:
+  H0: les variances sont égales
+  H1: les variances ne sont pas égales.
+```{r}
+testmoyGenGl <- baseReduiteGenre[,c(2,4)]
+var.test(Global_Sales~Genre,data = testmoyGenGl)
+```
+LA p-value est de 0.03062, donc elle est inférieure à 0.05, et on rejette H0. Donc au risque de 5%, les variances ne sont pas égales.
+
+On peut à présent faire le test sur l'égalité des moyennes, avec les variances non égales, et l'échantillon est indépendant.
+
+Pour tester l'égalité des moyennes, on fait les hypothèses suivantes:
+µ1: moyenne des ventes globales des jeux d'action
+µ2: moyenne des ventes globales des jeux de stratégie
+
+H0: µ1 et µ2 sont égales
+H1: µ1 et µ2 sont différentes
+
+```{r}
+t.test(Global_Sales~Genre,var.equal=F,data = testmoyGenGl)
+```
+
+La p-value est de 0.08868, donc elle est légèrement supérieure à 0.05, et on rejette avec précaution H1. Donc au risque de 5%, les moyennes des ventes globales des jeux d'action et de stratégie sont égales.
+
+#### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;iii. Test des moyennes sur les ventes européennes entre les plateformes Playstation et Nintendo
+
+Comme nous avons un croisement quanti*quali, pour pouvoir faire le test sur la moyenne, il faut d'abord faire le test sur l'égalité des variances pour déterminer l'écriture du test. Pour cela, il faut soit que les sous-populations suivent une loi gaussienne, soit que l'échantillon soit assez grand, ce qui est notre cas ici avec 3062 individus.
+
+Pour le test des variances, on fait les hypothèses suivantes:
+  H0: les variances sont égales
+  H1: les variances ne sont pas égales.
+```{r}
+testMoyPlatEU <- baseReduitePlatform[,c(1,3)]
+var.test(EU_Sales~Platform,data = testMoyPlatEU)
+```
+LA p-value est de 3.72e-05, donc elle est inférieure à 0.05, et on rejette H0. Donc au risque de 5%, les variances ne sont pas égales.
+
+On peut à présent faire le test sur l'égalité des moyennes, avec les variances non égales, et l'échantillon est indépendant.
+
+Pour tester l'égalité des moyennes, on fait les hypothèses suivantes:
+µ1: moyenne des ventes européennes de la plateforme Nintendo
+µ2: moyenne des ventes européennes de la plateforme Playstation
+
+H0: µ1 et µ2 sont égales
+H1: µ1 et µ2 sont différentes
+
+```{r}
+t.test(EU_Sales~Platform,var.equal=F,data = testMoyPlatEU)
+```
+
+La p-value est de 9.595e-10, donc elle est inférieure à 0.05, et on rejette H0. Donc au risque de 5%, les moyennes des ventes européennes des plateformes Nintendo et Playstation sont différentes.
+
+#### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;iv. Test des moyennes sur les ventes globales entre les plateformes Playstation et Nintendo
+
+Comme nous avons un croisement quanti*quali, pour pouvoir faire le test sur la moyenne, il faut d'abord faire le test sur l'égalité des variances pour déterminer l'écriture du test. Pour cela, il faut soit que les sous-populations suivent une loi gaussienne, soit que l'échantillon soit assez grand, ce qui est notre cas ici avec 3062 individus.
+
+Pour le test des variances, on fait les hypothèses suivantes:
+  H0: les variances sont égales
+  H1: les variances ne sont pas égales.
+```{r}
+testMoyPlatGl <- baseReduitePlatform[,c(1,4)]
+var.test(Global_Sales~Platform,data = testMoyPlatGl)
+```
+LA p-value est de 0.0001953, donc elle est inférieure à 0.05, et on rejette H0. Donc au risque de 5%, les variances ne sont pas égales.
+
+On peut à présent faire le test sur l'égalité des moyennes, avec les variances non égales, et l'échantillon est indépendant.
+
+Pour tester l'égalité des moyennes, on fait les hypothèses suivantes:
+µ1: moyenne des ventes globales de le plateforme Nintendo
+µ2: moyenne des ventes globales de la plateforme Playstation
+
+H0: µ1 et µ2 sont égales
+H1: µ1 et µ2 sont différentes
+
+```{r}
+t.test(Global_Sales~Platform,var.equal=F,data = testMoyPlatGl)
+```
+
+La p-value est de 0.3282, donc elle est supérieure à 0.05, et on rejette H1. Donc au risque de 5%, les moyennes des ventes globales des plateformes Nintendo et Playstation sont égales.
+
+### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;b. Analyses quali*quali
+
+Voici le tableau de contingence des variables Platform * Genre:
+```{r}
+genrePlat <- table(bases1$Platform, bases1$Genre)
+genrePlat
+```
+
+```{r}
+barplot(genrePlat, main="Nombre de jeux vidéo par plateforme en fonction des genres",legend.text = TRUE, col=rainbow(4), cex.names = 0.9, las=2, ylim = c(0,3000), ylab= "Nombre de jeux vidéo", args.legend=list(bty="n"))
+```
+
+Sur cette représentation, nous remarquons que les jeux vidéo d'action et de sports sont les jeux qui ont fait le plus de ventes dans le monde, toutes plateformes confondues, même si l'on peut voir que sur la plateforme playstation, les ventes sont doublées sur ces deux genres par rapport aux autres genres.
+
+Pour tester l'indépendance des variable Genre et Platform, nous avons réalisé un test du Chi, avec comme hypothèse:
+H0 : les variables Genre et Platform sont indépendantes,
+H1 : les variables Genre et Platform sont liées.
+```{r}
+chisq.test(genrePlat)
+```
+
+Après avoir effectué le test, on voit que la p-value est strictement inférieure à 2.2e-16, alors on rejette H0. On est presque a 100% de chance de ne pas se tromper pour dire que les variables Genre et Platform sont liées.
+
+Lorsque l'on regarde le graphique précédent, on voit que globalement les variables ont l'air d'être liées, même si il y a quelques valeurs où l'on peut se poser des questions. Néanmoins, avec le test d'indépendance, on peut affirmer à presque 100% que les variables Genre et Platform sont liées.
+
+### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;c. Analyses quanti*quanti
+
+```{r}
+plot(bases1$EU_Sales, bases1$Global_Sales, main = "Ventes globales des jeux vidéo en fonction des ventes européennes",xlab = "Ventes européennes (en millions d'euros)", ylab="Ventes globales (en millions d'euros)")
+legend(0.15,0, c("val. observées","droite des moindres carrés"), lty=c(0,0,1), cex=.8, pch=c(1,3),col=c(1,2))
+text(1.5,-0.90,"eq. dte de reg : y=0.43x+0.65",cex=.8)
+
+lm(bases1$Global_Sales~bases1$EU_Sales)->lm.ge
+achap<-lm.ge$coefficients[2]
+bchap<-lm.ge$coefficients[1]
+abline(bchap,achap, col="red")
+```
+Avec ce graphe, on peut voir que les points ont tendance à prendre la forme d'un cône. Lorsque l'on trace la droite des moindres carrés, on remarque que le modèle parait très mauvais, il y a des valeurs qui sont très éloignées de la droite, sachant que nous avons déjà appliqué la fonction du log sur les variables EU_Sales et Global_Sales.
+
+```{r}
+cor(bases1$EU_Sales, bases1$Global_Sales)
+```
+On peut voir que le coefficient de corrélation linéaire r(EU_Sales,Global_Sales) est proche de 1, il est de 0.9, donc il semble y avoir une corrélation positive entre les variables EU_Sales et Global_Sales, ce qui signifie que lorsqu'une variable augmente, alors l'autre augmente aussi, et inversement.
+
+Nous allons à présent valider le modèle :
+```{r}
+summary(lm.ge)
+```
+Le r² vaut 0.4719, il est donc assez loin de 1, le modèle est donc pour le moment plus que moyen. Nous allons maintenant étudier les résidus:
+```{r}
+par(mfrow=c(2,2))
+plot(lm.ge)
+```
+Sur le graphe "Residuals vs Fitted", nous voyons que les valeurs sont assez éloignées de la droite, elles sont entre -1 et 4.
+Sur le graphe "Normal Q-Q", on voit qu'une partie des points suit bien la loi gaussienne, mais que pour les valeurs aux extrémités, il y a quand même beaucoup de points aberrants, notamment un à 38.
+Sur le graphe "Scale-Location", on voit qu'il y a une diminution de la dispersion des résidus lorsque les fitted values augmentent, donc les résidus ont l'air d'être assez homogène.
+Comme le modèle est plus que moyen, alors on ne peut pas prédire les ventes globales à partir des ventes européennes, cela peut se confirmer avec l'équation de droite des moindres carrés.
+
+## IV. Conclusion
+
+Pour conclure, nous allons essayer de répondre à nos questions:
+
+- Le genre des jeux vidéo a-t-il un impact sur les ventes européennes? mondiales?
+ 
+  Nous avons pu voir que les genres de jeux vidéos n'ont pas de lien avec les ventes qu'elle soit mondiales ou européennes.
+  
+- La plateforme des jeux vidéo a-t-il un impact sur les ventes européennes? mondiales?
+  
+  Nous avons pu voir que la plateforme de jeux vidéos n'a pas de lien avec les ventes qu'elle soit mondiales ou européennes. 
+  
+- Les ventes européennes correspondent-elles à une grande part des ventes mondiales?
+  
+  Nous avons vu au cours de nos analyses que les ventes globales et les ventes européennes sont liées, ce qui veut dire que lorsque les ventes européennes augmentent, alors les ventes mondiales augmentent. Cependant, nous n'avons pas étudier les ventes mondiales avec les ventes des autres continents, donc nous ne pouvons pas répondre à cette question. Cela pourrait être une future analyse.
+  
+- Les jeux d'actions sont-ils plus développés sur la plateforme Nintendo ou sur la plateforme Playstation?
+  
+  Grâce à notre analyse quali*quali, on a pu voir qu'il y a plus de jeux d'actions développés sur la plateforme Playstation.
+  
+- Les jeux de stratégies sont-ils plus développés sur la plateforme Nintendo ou sur la plateforme Playstation?
+  
+  Grâce à notre analyse quali*quali, on a pu voir qu'il y a un peu plus de jeux de stratégie développés sur la plateforme Nintendo, même si il y a presque tout autant de jeux de stratégie développés sur Playstation.
